@@ -67,28 +67,32 @@
       "valueName": "avg"
     },
     {
-      "aliasColors": { "{id=\"/\",instance=\"cadvisor:8080\",job=\"prometheus\"}": "#BA43A9" },
       "bars": false,
       "datasource": "${DS_PROMETHEUS}",
-      "fill": 3,
+      "description": "Real-time node CPU utilisation derived from node_exporter with warning and critical thresholds.",
+      "fill": 1,
       "gridPos": { "h": 6, "w": 8, "x": 4, "y": 0 },
       "id": 5,
-      "legend": { "show": false },
+      "legend": { "avg": true, "current": true, "rightSide": true, "show": true },
       "lines": true,
-      "linewidth": 2,
+      "linewidth": 3,
       "nullPointMode": "null as zero",
-      "stack": true,
+      "seriesOverrides": [
+        { "alias": "/.*/", "color": "#EAB839" }
+      ],
+      "stack": false,
       "targets": [
-        { "expr": "sum(rate(container_cpu_system_seconds_total[1m]))", "hide": true, "refId": "B" },
-        { "expr": "sum(rate(container_cpu_system_seconds_total{name=~\".+\"}[1m]))", "hide": true, "refId": "F" },
-        { "expr": "sum(rate(container_cpu_system_seconds_total{id=\"/\"}[1m]))", "hide": true, "refId": "A" },
-        { "expr": "sum(rate(process_cpu_seconds_total[$interval])) * 100", "legendFormat": "host", "refId": "C" }
+        { "expr": "clamp_min(100 - (avg by (instance) (irate(node_cpu_seconds_total{mode=\"idle\",job=~\"$job\",instance=~\"${node:regex}(:${port:regex})?\"}[$interval])) * 100), 0)", "legendFormat": "{{instance}}", "refId": "C" }
+      ],
+      "thresholds": [
+        { "color": "rgba(237, 129, 40, 0.89)", "value": 70 },
+        { "color": "rgba(245, 54, 54, 0.9)", "value": 85 }
       ],
       "title": "CPU Usage on Node",
-      "tooltip": { "msResolution": true, "shared": true, "sort": 0, "value_type": "cumulative" },
+      "tooltip": { "msResolution": true, "shared": true, "sort": 2, "value_type": "individual" },
       "type": "graph",
       "xaxis": { "mode": "time", "show": false },
-      "yaxes": [{ "format": "percent", "max": 120, "show": true }, { "format": "short", "show": false }]
+      "yaxes": [{ "decimals": 0, "format": "percent", "max": 100, "min": 0, "show": true }, { "format": "short", "show": false }]
     },
     {
       "aliasColors": { "Free Disk Space": "#7EB26D", "Used Disk Space": "#BF1B00" },
@@ -190,21 +194,22 @@
     {
       "bars": false,
       "datasource": "${DS_PROMETHEUS}",
-      "fill": 5,
+      "fill": 4,
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
       "id": 1,
-      "legend": { "show": true },
+      "legend": { "alignAsTable": true, "avg": true, "current": true, "rightSide": true, "show": true, "sort": "avg", "sortDesc": true, "values": true },
       "lines": true,
-      "linewidth": 1,
+      "linewidth": 2,
       "nullPointMode": "null as zero",
       "stack": true,
       "targets": [
-        { "expr": "sum(rate(container_cpu_usage_seconds_total{name=~\".+\"}[$interval])) by (name) * 100", "legendFormat": "{{name}}", "refId": "F" }
+        { "expr": "clamp_min(sum(rate(container_cpu_usage_seconds_total{name=~\".+\",job=~\"$job\",instance=~\"${node:regex}(:${port:regex})?\"}[$interval])) by (name), 0) / clamp_min(sum(count(node_cpu_seconds_total{mode=\"idle\",job=~\"$job\",instance=~\"${node:regex}(:${port:regex})?\"}) by (instance)), 1) * 100", "legendFormat": "{{name}}", "refId": "F" }
       ],
       "title": "CPU Usage per Container (Stacked)",
+      "tooltip": { "msResolution": true, "shared": true, "sort": 2, "value_type": "individual" },
       "type": "graph",
       "xaxis": { "mode": "time", "show": true },
-      "yaxes": [{ "format": "percent", "show": true }, { "format": "short", "show": false }]
+      "yaxes": [{ "decimals": 1, "format": "percent", "max": 100, "min": 0, "show": true }, { "format": "short", "show": false }]
     },
     {
       "bars": false,
@@ -324,7 +329,7 @@
         "options": [],
         "query": "label_values(container_cpu_user_seconds_total, job)",
         "refresh": 1,
-        "regex": "",
+        "regex": "/^(?:[-0-9A-Za-z._:]+)$/",
         "sort": 1,
         "type": "query",
         "useTags": false
@@ -333,16 +338,16 @@
         "allValue": ".*",
         "current": {},
         "datasource": "${DS_PROMETHEUS}",
-        "definition": "label_values(container_cpu_user_seconds_total{job=~\"$job\"}, instance)",
+        "definition": "label_values(label_replace(container_cpu_user_seconds_total{job=~\"$job\"}, \"host\", \"$1\", \"instance\", \"^(?:\\\\[)?([^\\\\]]+)(?:\\\\])?(?::.*)?$\"), host)",
         "hide": 0,
         "includeAll": true,
         "label": "Host",
         "multi": true,
         "name": "node",
         "options": [],
-        "query": "label_values(container_cpu_user_seconds_total{job=~\"$job\"}, instance)",
+        "query": "label_values(label_replace(container_cpu_user_seconds_total{job=~\"$job\"}, \"host\", \"$1\", \"instance\", \"^(?:\\\\[)?([^\\\\]]+)(?:\\\\])?(?::.*)?$\"), host)",
         "refresh": 1,
-        "regex": "/([^:]+):.*/",
+        "regex": "/^(?:[-0-9A-Za-z._:]+)$/",
         "sort": 1,
         "type": "query",
         "useTags": false
@@ -351,16 +356,16 @@
         "allValue": ".*",
         "current": {},
         "datasource": "${DS_PROMETHEUS}",
-        "definition": "label_values(container_cpu_user_seconds_total{instance=~\"$node:(.*)\"}, instance)",
+        "definition": "label_values(label_replace(container_cpu_user_seconds_total{job=~\"$job\",instance=~\"${node:regex}(:.*)?\"}, \"port\", \"$1\", \"instance\", \"^.*:(\\\\d+)$\"), port)",
         "hide": 0,
         "includeAll": true,
         "label": "Port",
         "multi": true,
         "name": "port",
         "options": [],
-        "query": "label_values(container_cpu_user_seconds_total{instance=~\"$node:(.*)\"}, instance)",
+        "query": "label_values(label_replace(container_cpu_user_seconds_total{job=~\"$job\",instance=~\"${node:regex}(:.*)?\"}, \"port\", \"$1\", \"instance\", \"^.*:(\\\\d+)$\"), port)",
         "refresh": 1,
-        "regex": "/[^:]+:(.*)/",
+        "regex": "/^[0-9]+$/",
         "sort": 3,
         "type": "query",
         "useTags": false
