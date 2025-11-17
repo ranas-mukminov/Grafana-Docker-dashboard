@@ -1,118 +1,149 @@
-# Docker Container & Host Metrics — Grafana Dashboard
+# Grafana Docker Dashboard
+
+**Production-ready Grafana dashboard for comprehensive Docker host and container monitoring**
 
 [English] | [Русский](README.ru.md)
 
-Grafana dashboard for monitoring Docker hosts and containers with Prometheus, cAdvisor and node_exporter.
+A complete monitoring solution for Docker environments using Prometheus, cAdvisor, and node_exporter. This dashboard provides real-time visibility into container and host metrics with pre-configured panels for resource usage, performance tracking, and system health monitoring.
 
-## Overview
+## Key Features
 
-This dashboard provides a **single view** of Docker host and container metrics using Prometheus as a data source, fed by cAdvisor and node_exporter. It offers a comprehensive monitoring solution for Docker environments with pre-configured panels for resource usage, performance metrics, and system information.
+* **Single-pane view** — Monitor all Docker hosts and containers from one dashboard
+* **Comprehensive metrics** — CPU, memory, disk I/O, network traffic at both host and container levels
+* **Resource tracking** — Real-time resource utilization with historical trends
+* **Container lifecycle** — Track running containers, restarts, and health status
+* **Multi-host support** — Monitor multiple Docker hosts simultaneously with variable-based filtering
+* **System information** — Built-in version table showing Docker, OS, kernel, and exporter versions
+* **Production-tested** — Battle-tested dashboard with normalized metrics and proper threshold alerts
+* **Import-ready** — JSON configuration ready for immediate import into any Grafana instance
+* **Flexible filtering** — Dynamic variables for job, node, port, and time interval selection
 
-Typical use cases include:
-* Home lab or small clusters where you need quick insights into Docker performance.
-* Production Docker nodes where you want an opinionated, ready-to-use monitoring overview without extensive configuration.
+## Architecture
 
-The dashboard JSON in this repository is ready to import into any Grafana instance with a Prometheus datasource configured.
+This dashboard uses a standard Prometheus monitoring stack:
 
-## Requirements
+```
+┌─────────────────┐
+│  Grafana        │ ← Visualizes metrics
+│  (This Dashboard)│
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Prometheus     │ ← Scrapes and stores metrics
+└────────┬────────┘
+         │
+         ├──────────────────┬─────────────────┐
+         ▼                  ▼                 ▼
+┌─────────────┐    ┌─────────────┐   ┌─────────────┐
+│  cAdvisor   │    │ node_exporter│   │  cAdvisor   │
+│  (Host 1)   │    │  (Host 1)   │   │  (Host 2)   │
+└─────────────┘    └─────────────┘   └─────────────┘
+       │                   │                  │
+       ▼                   ▼                  ▼
+  Docker Engine      System Metrics     Docker Engine
+```
 
-To use this dashboard, you need:
+**Data sources:**
+* **cAdvisor** — Provides container-level metrics (CPU, memory, network, filesystem)
+* **node_exporter** — Provides host-level metrics (system resources, hardware info)
+* **Prometheus** — Aggregates, stores, and serves time-series data
+* **Grafana** — Visualizes metrics through this dashboard
 
-* **Prometheus** scraping metrics from:
-  * **cAdvisor** on each Docker host (for container-level metrics)
-  * **node_exporter** on each host (for node-level metrics)
-* **Grafana** with a Prometheus datasource configured (default name `Prometheus`, or map via `DS_PROMETHEUS` on import)
+![Dashboard Preview](./images/dashboard-preview.png)
 
-### Example Prometheus scrape configuration
+## Quick Start
 
-Add the following jobs to your Prometheus `scrape_configs`:
+### Prerequisites
+
+You need the following components running:
+
+1. **Prometheus** (version 2.x or higher)
+2. **cAdvisor** on each Docker host (typically on port 8080)
+3. **node_exporter** on each host (typically on port 9100)
+4. **Grafana** (version 5.x or higher)
+
+### Step 1: Deploy Exporters
+
+On each Docker host, run cAdvisor and node_exporter:
+
+```bash
+# Run cAdvisor
+docker run -d \
+  --name=cadvisor \
+  --restart=always \
+  --volume=/:/rootfs:ro \
+  --volume=/var/run:/var/run:ro \
+  --volume=/sys:/sys:ro \
+  --volume=/var/lib/docker/:/var/lib/docker:ro \
+  --volume=/dev/disk/:/dev/disk:ro \
+  --publish=8080:8080 \
+  --privileged \
+  gcr.io/cadvisor/cadvisor:latest
+
+# Run node_exporter
+docker run -d \
+  --name=node_exporter \
+  --restart=always \
+  --net="host" \
+  --pid="host" \
+  --volume=/:/host:ro,rslave \
+  quay.io/prometheus/node-exporter:latest \
+  --path.rootfs=/host
+```
+
+### Step 2: Configure Prometheus
+
+Add scrape configurations to your `prometheus.yml`:
 
 ```yaml
 scrape_configs:
   - job_name: 'cadvisor'
     static_configs:
-      - targets: ['host1:8080', 'host2:8080']
-  
+      - targets:
+          - 'docker-host-1:8080'
+          - 'docker-host-2:8080'
+    
   - job_name: 'node'
     static_configs:
-      - targets: ['host1:9100', 'host2:9100']
+      - targets:
+          - 'docker-host-1:9100'
+          - 'docker-host-2:9100'
 ```
 
-Adjust the hostnames and ports to match your environment.
-
-## Importing the dashboard
-
-### Import via Grafana UI
-
-1. Open Grafana and navigate to **Dashboards** → **Import**.
-2. Upload the JSON file from this repository (`10619_rev2.json`).
-3. Select the Prometheus datasource (or map `DS_PROMETHEUS` if prompted).
-4. Click **Import** to save and open the dashboard.
-
-The dashboard assumes Prometheus is reachable as configured in your datasource settings.
-
-### Import via Grafana API
-
-You can also import the dashboard programmatically using the Grafana API:
+Reload Prometheus configuration:
 
 ```bash
-GRAFANA_URL="https://your-grafana-instance"
-API_KEY="your-api-key"
-
-curl -sS -X POST "$GRAFANA_URL/api/dashboards/db" \
-  -H "Authorization: Bearer $API_KEY" \
-  -H "Content-Type: application/json" \
-  --data-binary @10619_rev2.json
+curl -X POST http://prometheus:9090/-/reload
 ```
 
-Replace `GRAFANA_URL` and `API_KEY` with your actual Grafana instance URL and API key.
+Verify targets are up: `http://prometheus:9090/targets`
 
-## Variables
+### Step 3: Import Dashboard to Grafana
 
-The dashboard uses the following variables to filter and customize the displayed data:
+**Option A: Import via Grafana UI**
 
-* **`job`** — Job label for cAdvisor metrics (default: `cadvisor`). Used to select the appropriate metric source.
-* **`node`** — Host or node name. Supports `All` via regex to display metrics from all hosts simultaneously.
-* **`port`** — Port number. Supports `All` via regex to aggregate metrics across different ports.
-* **`interval`** — Query interval that controls the resolution of time-series data in panels.
+1. Download `10619_rev2.json` from this repository
+2. Open Grafana → **Dashboards** → **Import**
+3. Upload the JSON file
+4. Select your Prometheus datasource
+5. Click **Import**
 
-These variables can be adjusted using the dropdown selectors at the top of the dashboard.
+**Option B: Import via API**
 
-## Panels overview
+```bash
+GRAFANA_URL="http://your-grafana:3000"
+API_KEY="your-api-key"
 
-The dashboard includes the following panels organized for efficient monitoring:
+curl -X POST "$GRAFANA_URL/api/dashboards/db" \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d @10619_rev2.json
+```
 
-* **Running containers** — Displays the count of running containers based on `max_over_time(container_last_seen[5m])`.
-* **CPU usage on node** — Shows total CPU usage across the Docker host.
-* **CPU usage per container** — Breaks down CPU usage by individual containers.
-* **Memory usage per container** — Displays memory consumption for each container.
-* **Memory cache per container** — Shows cache memory usage by container.
-* **Free/used disk space per mount** — Visualizes disk space utilization for each mounted filesystem.
-* **Disk I/O per device** — Tracks read/write operations for storage devices.
-* **Network traffic on node** — Shows network ingress/egress for the host.
-* **Network traffic per container** — Displays network usage broken down by container.
-* **Versions table** — Lists versions of cAdvisor, Prometheus, node_exporter, Docker, OS, and kernel for quick reference.
+**Option C: Automated Provisioning**
 
-The layout starts with summary metrics at the top, resource usage details in the middle rows, and system information at the bottom.
-
-## Notes on metric names
-
-This dashboard is designed for **node_exporter >= 0.16**, which uses `_bytes` suffixes for memory and disk metrics. Key metrics expected by the dashboard include:
-
-* `node_memory_MemAvailable_bytes` — Available memory in bytes
-* `node_memory_MemTotal_bytes` — Total memory in bytes
-* `node_disk_read_bytes_total` — Total bytes read from disk
-* `node_disk_written_bytes_total` — Total bytes written to disk
-
-If you're using an older version of node_exporter with different metric names, you may need to adjust the PromQL queries in the dashboard panels to match your metric naming scheme.
-
-## Provisioning (optional)
-
-For automated deployment, you can use Grafana's provisioning feature to automatically load the dashboard and datasource.
-
-### Dashboards provisioning
-
-Create a provisioning file at `/etc/grafana/provisioning/dashboards/docker.yaml`:
+Create `/etc/grafana/provisioning/dashboards/docker.yaml`:
 
 ```yaml
 apiVersion: 1
@@ -122,78 +153,202 @@ providers:
     folder: Infrastructure
     type: file
     allowUiUpdates: true
-    updateIntervalSeconds: 30
     options:
       path: /var/lib/grafana/dashboards
 ```
 
-Place the dashboard JSON file at:
-```
-/var/lib/grafana/dashboards/docker-container-host-metrics.json
-```
+Copy `10619_rev2.json` to `/var/lib/grafana/dashboards/` and restart Grafana.
 
-Adjust the `path` to match your Grafana configuration.
+## Usage
 
-### Datasource provisioning
+### Dashboard Variables
 
-Create a datasource provisioning file for Prometheus:
+Use the dropdown selectors at the top of the dashboard to filter data:
 
-```yaml
-apiVersion: 1
-datasources:
-  - name: Prometheus
-    type: prometheus
-    access: proxy
-    url: http://prometheus:9090
-    isDefault: true
-    editable: true
-```
+* **job** — Select the cAdvisor job name (default: `cadvisor`)
+* **node** — Filter by specific host or select `All` to view all hosts
+* **port** — Filter by port or select `All` for aggregated view
+* **interval** — Adjust time-series resolution (auto, 1m, 5m, etc.)
 
-This configuration assumes Prometheus is available at `http://prometheus:9090`. Modify the URL to match your Prometheus instance.
+### Key Metrics Explained
+
+**Running Containers**
+* Shows active container count in the last 5 minutes
+* Based on `container_last_seen` metric from cAdvisor
+
+**CPU Usage**
+* Node CPU usage shows aggregate CPU utilization (0-100%)
+* Container CPU usage normalized by available CPU cores
+* Thresholds: Warning at 70%, Critical at 85%
+
+**Memory Usage**
+* Working set memory (actual memory used by containers)
+* Cache memory (filesystem cache, reclaimable)
+* Host memory available vs. total
+
+**Disk Metrics**
+* Free/used space per mount point
+* Read/write bytes per device
+* I/O operations per second
+
+**Network Traffic**
+* Ingress/egress on host interfaces
+* Per-container network usage
+* Cumulative bandwidth over time
+
+### Best Practices
+
+1. **Set up alerting** — Create Prometheus alerts for critical thresholds (CPU > 85%, Memory > 90%, Disk > 90%)
+2. **Regular review** — Check the versions table to ensure exporters and Docker are up-to-date
+3. **Capacity planning** — Monitor trends over 7-30 days to predict resource needs
+4. **Container optimization** — Use per-container metrics to identify resource-heavy workloads
+5. **Retention tuning** — Adjust Prometheus retention based on your monitoring requirements
 
 ## Troubleshooting
 
-### No data in "Running containers" panel
+### No data displayed / "N/A" values
 
-* Verify dashboard variables: `job = cadvisor`, `node = All`, `port = All`.
-* Check that the `container_last_seen` metric exists in Prometheus for the last 5 minutes.
-* Query Prometheus directly: `container_last_seen{job="cadvisor"}` to confirm data availability.
+**Check Prometheus targets:**
+```bash
+curl http://prometheus:9090/api/v1/targets | jq '.data.activeTargets[] | select(.health != "up")'
+```
 
-### Empty memory or disk panels
+**Verify metrics exist:**
+```bash
+# Check cAdvisor metrics
+curl http://prometheus:9090/api/v1/query?query=container_last_seen
 
-* Ensure node_exporter is exposing metrics with `_bytes` suffixes.
-* Verify node_exporter version is >= 0.16.
-* Check metric names in Prometheus match the expected format.
+# Check node_exporter metrics
+curl http://prometheus:9090/api/v1/query?query=node_memory_MemTotal_bytes
+```
 
-### General checks
+**Solution:** Ensure cAdvisor and node_exporter are running and accessible from Prometheus.
 
-* Visit the Prometheus targets page at `http://prometheus:9090/targets`.
-* Confirm that both `cadvisor` and `node` job targets show as **UP**.
-* Verify the Grafana Prometheus datasource is configured correctly and can query Prometheus.
-* Check Grafana logs for any datasource connection errors.
+### "Running containers" panel shows 0
 
-## Development
+**Verify dashboard variables:**
+* Set `job = cadvisor` (or your cAdvisor job name)
+* Set `node = All` and `port = All`
 
-To contribute or modify this dashboard:
+**Check the metric directly in Prometheus:**
+```promql
+container_last_seen{job="cadvisor",image!=""}
+```
 
-1. Create a feature branch:
-   ```bash
-   git checkout -b feat/grafana-docker-dashboard
-   ```
+**Solution:** If no results, verify cAdvisor is scraping containers correctly. Check cAdvisor logs.
 
-2. Edit the dashboard JSON file (`10619_rev2.json`) or make changes directly in Grafana and export the updated JSON.
+### Memory or disk panels are empty
 
-3. Commit and push your changes:
-   ```bash
-   git add 10619_rev2.json README.md
-   git commit -m "Update dashboard: description of changes"
-   git push -u origin feat/grafana-docker-dashboard
-   ```
+**Issue:** Metric naming mismatch with node_exporter version
 
-The dashboard JSON can be edited in Grafana's UI, then exported back to this repository to keep the dashboard as code.
+**Check your node_exporter version:**
+```bash
+curl http://node-exporter:9100/metrics | grep node_exporter_build_info
+```
+
+**Solution:** 
+* This dashboard requires node_exporter >= 0.16 (uses `_bytes` suffix)
+* Older versions use different metric names (e.g., `node_memory_MemAvailable` vs. `node_memory_MemAvailable_bytes`)
+* Update node_exporter or adjust PromQL queries in dashboard panels
+
+### High CPU values / percentages over 100%
+
+**Cause:** Multi-core systems without CPU normalization
+
+**Solution:** The dashboard already includes CPU normalization. If you still see issues:
+1. Verify the query uses `rate()` or `irate()` with appropriate intervals
+2. Check that container CPU is normalized by `machine_cpu_cores`
+3. Review CODE_QUALITY.md for detailed fixes applied
+
+### Grafana datasource connection errors
+
+**Check datasource configuration:**
+1. Go to Grafana → **Configuration** → **Data Sources**
+2. Test the Prometheus datasource connection
+3. Verify URL is correct (e.g., `http://prometheus:9090`)
+
+**Check network connectivity:**
+```bash
+# From Grafana container/host
+curl http://prometheus:9090/api/v1/status/config
+```
+
+**Solution:** Ensure Prometheus is accessible from Grafana. Check firewall rules and DNS resolution.
+
+### Variables not loading
+
+**Symptom:** Dropdown variables are empty or show "No data"
+
+**Check Prometheus label values:**
+```promql
+# Check job labels
+label_values(container_last_seen, job)
+
+# Check instance labels
+label_values(container_last_seen, instance)
+```
+
+**Solution:** 
+* Verify metrics have the expected labels
+* Check variable regex patterns in dashboard settings
+* Ensure Prometheus datasource is selected correctly
+
+### IPv6 addresses cause issues
+
+**Issue:** Dashboard was updated to support both IPv4 and IPv6
+
+**Verify:** Check CODE_QUALITY.md for IPv6 compatibility fixes
+
+**Solution:** The latest dashboard version uses `label_replace` to extract host/port without assuming IPv4 format.
+
+## Professional SRE/DevOps Services
+
+This dashboard is maintained by **run-as-daemon** — a professional SRE/DevOps services provider specializing in production monitoring, high availability, and infrastructure automation.
+
+Need help beyond this dashboard? We offer:
+
+* **Production monitoring setup** — Complete observability stack deployment (Prometheus, Grafana, Alertmanager, Loki)
+* **Custom dashboards and alerts** — Tailored monitoring solutions for your infrastructure
+* **High availability configuration** — HA Prometheus, Grafana clustering, disaster recovery
+* **Performance tuning** — Optimize Docker, Kubernetes, and database workloads for high load
+* **Infrastructure as Code** — Terraform, Ansible automation for monitoring infrastructure
+* **On-call support** — 24/7 incident response and troubleshooting
+
+**Contact us:** [https://run-as-daemon.ru](https://run-as-daemon.ru)
+
+Whether you need a one-time consultation or ongoing infrastructure management, we provide expert-level SRE services to keep your systems reliable and performant.
+
+## Support / Sponsorship
+
+If this dashboard saves you time or helps monitor your infrastructure:
+
+### Free Support
+* ⭐ **Star this repository** — Help others discover this dashboard
+* 🔗 **Share it** — Spread the word on social media, blog posts, or with colleagues
+* 💬 **Contribute** — Report issues, suggest features, or submit improvements
+
+### Financial Support
+* 💰 **GitHub Sponsors** — Use the "Sponsor" button at the top of this repository
+* ☕ **Buy me a coffee** — Support ongoing maintenance and updates
+* 🎯 **Hire for projects** — Commission custom dashboards or monitoring solutions
+
+Your support helps maintain this project and create more open-source monitoring tools for the community.
+
+**Sponsorship options:** See [.github/FUNDING.yml](.github/FUNDING.yml) for all available channels.
+
+## Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
+* Reporting bugs and requesting features
+* Submitting pull requests
+* Code style and testing expectations
 
 ## License
 
-This project is licensed under the **Unlicense** (public domain equivalent). You are free to use, modify, and distribute this dashboard without any restrictions.
+This project is licensed under the **Unlicense** (public domain equivalent).
 
-See the [LICENSE](LICENSE) file for full details.
+You are free to use, modify, and distribute this dashboard without any restrictions. See the [LICENSE](LICENSE) file for details.
+
+---
+
+**Maintained by [run-as-daemon](https://run-as-daemon.ru)** | **Questions?** See [SUPPORT.md](SUPPORT.md)

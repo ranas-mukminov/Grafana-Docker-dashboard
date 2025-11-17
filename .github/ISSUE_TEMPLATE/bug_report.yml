@@ -1,0 +1,158 @@
+name: Bug Report
+description: Report a bug or issue with the Grafana Docker Dashboard
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the information below to help us diagnose and fix the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: "The dashboard shows 'No data' in the CPU panel even though Prometheus is collecting metrics..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior.
+      placeholder: |
+        1. Import dashboard JSON into Grafana
+        2. Configure Prometheus datasource at http://prometheus:9090
+        3. Open the dashboard
+        4. See error in CPU Usage panel
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen.
+      placeholder: "The CPU Usage panel should display CPU utilization metrics from cAdvisor..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened. Include screenshots if applicable.
+      placeholder: "The panel shows 'No data' or displays an error message..."
+    validations:
+      required: true
+
+  - type: input
+    id: dashboard-version
+    attributes:
+      label: Dashboard Version
+      description: Which version of the dashboard are you using? (Check the JSON file name or gnetId)
+      placeholder: "10619_rev2 or latest from main branch"
+    validations:
+      required: true
+
+  - type: input
+    id: grafana-version
+    attributes:
+      label: Grafana Version
+      description: What version of Grafana are you running?
+      placeholder: "e.g., 10.2.0, 9.5.3"
+    validations:
+      required: true
+
+  - type: input
+    id: prometheus-version
+    attributes:
+      label: Prometheus Version
+      description: What version of Prometheus are you using?
+      placeholder: "e.g., 2.45.0, 2.40.0"
+    validations:
+      required: true
+
+  - type: input
+    id: cadvisor-version
+    attributes:
+      label: cAdvisor Version
+      description: What version of cAdvisor are you running?
+      placeholder: "e.g., v0.47.0, latest"
+    validations:
+      required: false
+
+  - type: input
+    id: node-exporter-version
+    attributes:
+      label: node_exporter Version
+      description: What version of node_exporter are you running?
+      placeholder: "e.g., v1.6.1, v1.5.0"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: prometheus-targets
+    attributes:
+      label: Prometheus Targets Status
+      description: Are all Prometheus targets (cAdvisor and node_exporter) showing as UP?
+      options:
+        - All targets are UP
+        - Some targets are DOWN
+        - All targets are DOWN
+        - Haven't checked
+    validations:
+      required: true
+
+  - type: textarea
+    id: datasource-config
+    attributes:
+      label: Grafana Datasource Configuration
+      description: How is your Prometheus datasource configured in Grafana?
+      placeholder: |
+        URL: http://prometheus:9090
+        Access: Server (default) or Browser
+        Auth: None / Basic / Other
+    validations:
+      required: false
+
+  - type: textarea
+    id: variables
+    attributes:
+      label: Dashboard Variables
+      description: What values are set for the dashboard variables?
+      placeholder: |
+        job: cadvisor
+        node: All
+        port: All
+        interval: auto
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here (logs, screenshots, etc.).
+      placeholder: "Grafana logs show: [error message]"
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission Checklist
+      description: Please confirm you've completed these steps before submitting
+      options:
+        - label: I've checked that all Prometheus targets are UP
+          required: false
+        - label: I've verified the Prometheus datasource connection works in Grafana
+          required: false
+        - label: I've checked the dashboard variables are set correctly
+          required: false
+        - label: I've searched existing issues to avoid duplicates
+          required: true
+        - label: I've reviewed the Troubleshooting section in README.md
+          required: false
