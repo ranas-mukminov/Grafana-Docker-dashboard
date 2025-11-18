@@ -159,28 +159,28 @@ providers:
 
 Copy `10619_rev2.json` to `/var/lib/grafana/dashboards/` and restart Grafana.
 
-## Run with Docker Compose
+## Dashboard validation
 
-If you prefer to spin everything up locally, the repository includes a `docker-compose.yml` file that wires Prometheus, Grafana, cAdvisor, and node_exporter together. Make sure Docker Engine and the Docker Compose plugin (v2+) are installed before running the stack.
+The repository ships with a lightweight validation script that checks the
+dashboard JSON for the variables, datasources, and panel targets that the
+production dashboards depend on. Run it before submitting a pull request or
+importing custom changes:
 
 ```bash
-# Start the monitoring stack
-docker compose up -d
-
-# Stop and remove the stack
-docker compose down
+python tests/validate_dashboard.py  # validates 10619_rev2.json by default
 ```
 
-Grafana will be available at [http://localhost:3000](http://localhost:3000) with the default `admin` / `admin` credentials (be sure to change the password on first login). The dashboard is auto-provisioned into the **Infrastructure** folder, so you can open Grafana → **Dashboards** → **Infrastructure** → **Docker** to start exploring metrics right away.
+You can also point it at a different dashboard file:
 
-## CI / Validation
+```bash
+python tests/validate_dashboard.py /path/to/exported-dashboard.json
+```
 
-Every pull request runs a GitHub Actions workflow that keeps the dashboard artifacts healthy:
-
-* **JSON integrity check** — Confirms `10619_rev2.json` is valid JSON and not empty, preventing corrupt dashboard exports from being merged.
-* **docker-compose lint** — Uses `docker compose config` to validate the Compose file syntax so contributors do not break the local demo stack.
-
-These gates catch formatting mistakes before they reach production users, ensuring the dashboard can always be imported and the demo environment remains runnable.
+The script fails with actionable error messages if required variables (`job`,
+`node`, `port`) are missing, if Prometheus is not declared as a datasource, or if
+panels were exported without PromQL targets. This guards against accidentally
+committing broken dashboards and provides quick feedback without needing a
+running Grafana instance.
 
 ## Usage
 
