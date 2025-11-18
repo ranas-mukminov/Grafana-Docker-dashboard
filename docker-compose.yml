@@ -23,16 +23,16 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    depends_on:
+      - prometheus
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./provisioning/datasources:/etc/grafana/provisioning/datasources:ro
-      - ./provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./provisioning:/etc/grafana/provisioning:ro
       - ./10619_rev2.json:/var/lib/grafana/dashboards/10619_rev2.json:ro
-    depends_on:
-      - prometheus
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
@@ -43,7 +43,7 @@ services:
       - "8080:8080"
     volumes:
       - /:/rootfs:ro
-      - /var/run:/var/run:rw
+      - /var/run:/var/run:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
 
@@ -54,11 +54,14 @@ services:
     restart: unless-stopped
     ports:
       - "9100:9100"
-    command:
-      - '--path.rootfs=/host'
+    pid: host
     volumes:
-      - /:/host:ro,rslave
-
-volumes:
-  prometheus_data:
-  grafana_data:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($|/)"
+      - "--collector.filesystem.ignored-fs-types=^(sys|proc|auto)fs$"

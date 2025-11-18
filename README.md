@@ -159,6 +159,29 @@ providers:
 
 Copy `10619_rev2.json` to `/var/lib/grafana/dashboards/` and restart Grafana.
 
+## Dashboard validation
+
+The repository ships with a lightweight validation script that checks the
+dashboard JSON for the variables, datasources, and panel targets that the
+production dashboards depend on. Run it before submitting a pull request or
+importing custom changes:
+
+```bash
+python tests/validate_dashboard.py  # validates 10619_rev2.json by default
+```
+
+You can also point it at a different dashboard file:
+
+```bash
+python tests/validate_dashboard.py /path/to/exported-dashboard.json
+```
+
+The script fails with actionable error messages if required variables (`job`,
+`node`, `port`) are missing, if Prometheus is not declared as a datasource, or if
+panels were exported without PromQL targets. This guards against accidentally
+committing broken dashboards and provides quick feedback without needing a
+running Grafana instance.
+
 ## Usage
 
 ### Dashboard Variables

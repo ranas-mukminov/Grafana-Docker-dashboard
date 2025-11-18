@@ -1,0 +1,28 @@
+name: Dashboard CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate-dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4.1.1
+
+      # Fail fast if the dashboard JSON cannot be parsed.
+      - name: Validate dashboard JSON syntax
+        run: jq -e . 10619_rev2.json
+
+      # Guard against accidentally committing an empty dashboard.
+      - name: Ensure dashboard file is not empty
+        run: test -s 10619_rev2.json
+
+      # docker compose config verifies the stack definition stays deployable.
+      - name: Validate Docker Compose stack definition
+        run: docker compose config
