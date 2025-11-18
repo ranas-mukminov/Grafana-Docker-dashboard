@@ -34,6 +34,7 @@ We welcome code contributions! Here's how to submit a pull request:
    - For dashboard changes: Edit in Grafana UI, then export to JSON
    - For documentation: Edit markdown files directly
 4. **Test your changes** — Verify the dashboard works correctly:
+   - Run `python tests/validate_dashboard.py` to statically validate the JSON
    - Import the updated JSON into Grafana
    - Check all panels display data correctly
    - Test with different variable combinations
@@ -107,6 +108,7 @@ This repository primarily contains JSON configuration and markdown documentation
 
 Before submitting a PR, verify:
 
+- [ ] `python tests/validate_dashboard.py` passes
 - [ ] Dashboard imports successfully without errors
 - [ ] All panels display data (not "No data" or errors)
 - [ ] Variables work correctly (job, node, port, interval)
