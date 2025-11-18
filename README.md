@@ -159,6 +159,24 @@ providers:
 
 Copy `10619_rev2.json` to `/var/lib/grafana/dashboards/` and restart Grafana.
 
+## Run with Docker Compose
+
+If you prefer a self-contained demo, you can spin up the full stack with Docker Compose. Make sure Docker Engine and the Compose plugin are installed on your host first.
+
+```bash
+docker compose up -d
+```
+
+Grafana is exposed at [http://localhost:3000](http://localhost:3000) with the default credentials `admin` / `admin` until you change them. After Grafana finishes provisioning, open **Dashboards → Browse → Infrastructure** to find the Docker dashboard already loaded from `10619_rev2.json`. When you're done testing, stop the stack with:
+
+```bash
+docker compose down
+```
+
+## CI / Validation
+
+Every pull request triggers GitHub Actions checks to keep the shared dashboard healthy. The workflow verifies that `10619_rev2.json` is valid JSON and not accidentally emptied, and it lints `docker-compose.yml` to prevent configuration drift. These automated guards stop broken dashboards and misconfigured Compose files from ever landing in main, so imports stay smooth for everyone.
+
 ## Usage
 
 ### Dashboard Variables
