@@ -1,0 +1,29 @@
+name: Dashboard CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Grafana dashboard JSON
+        run: |
+          # jq ensures the dashboard definition is syntactically correct JSON.
+          jq -e . 10619_rev2.json
+
+      - name: Ensure dashboard file is not empty
+        run: |
+          # test -s confirms the exported dashboard actually contains content.
+          test -s 10619_rev2.json
+
+      - name: Validate Docker Compose stack
+        run: |
+          # docker compose config validates the stack definition and catches schema errors.
+          docker compose config
