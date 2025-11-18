@@ -1,9 +1,5 @@
 version: "3.8"
 
-volumes:
-  prometheus_data:
-  grafana_data:
-
 services:
   prometheus:
     image: prom/prometheus:latest
@@ -13,15 +9,15 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--web.enable-lifecycle"
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
 
   grafana:
-    image: grafana/grafana-oss:latest
+    image: grafana/grafana:latest
     container_name: grafana
     hostname: grafana
     restart: unless-stopped
